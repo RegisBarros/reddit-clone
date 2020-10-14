@@ -1,10 +1,11 @@
 package com.redditclone.services;
 
 import java.util.List;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 import com.redditclone.dtos.SubredditDto;
+import com.redditclone.exceptions.RedditException;
+import com.redditclone.mappers.SubredditMapper;
 import com.redditclone.models.Subreddit;
 import com.redditclone.repositories.SubredditRepository;
 
@@ -12,17 +13,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import lombok.AllArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 @Service
 @AllArgsConstructor
-@Slf4j
 public class SubredditService {
     private final SubredditRepository subredditRepository;
+    private final SubredditMapper subredditMapper;
 
     @Transactional
     public SubredditDto save(SubredditDto subredditDto) {
-        Subreddit subreddit = mapSubredditDto(subredditDto);
+        Subreddit subreddit = subredditMapper.mapDtoToSubreddit(subredditDto);
 
         subreddit = subredditRepository.save(subreddit);
 
@@ -32,25 +32,15 @@ public class SubredditService {
 
     @Transactional(readOnly = true)
     public List<SubredditDto> getAll() {
-        return subredditRepository.findAll()
-            .stream()
-            .map(this::mapToDto)
-            .collect(Collectors.toList());
-    }
-    
-    private SubredditDto mapToDto(Subreddit subreddit) {
-        return SubredditDto
-                .builder()
-                .id(subreddit.getId())
-                .name(subreddit.getName())
-                .description(subreddit.getDescription())
-                .postCount(subreddit.getPosts().size())
-                .build();
+        return subredditRepository.findAll().stream().map(subredditMapper::mapSubredditToDto)
+                .collect(Collectors.toList());
     }
 
-    private Subreddit mapSubredditDto(SubredditDto subredditDto) {
-        return Subreddit.builder().name(subredditDto.getName())
-                    .description(subredditDto.getDescription())
-                    .build();
+    @Transactional(readOnly = true)
+    public SubredditDto get(Long id) {
+        Subreddit subreddit = subredditRepository.findById(id)
+            .orElseThrow(() -> new RedditException("No subreddit found with id " + id));
+
+        return subredditMapper.mapSubredditToDto(subreddit);
     }
 }

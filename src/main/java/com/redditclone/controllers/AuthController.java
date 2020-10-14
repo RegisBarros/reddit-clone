@@ -1,7 +1,5 @@
 package com.redditclone.controllers;
 
-import javax.websocket.server.PathParam;
-
 import com.redditclone.dtos.AuthenticationReponse;
 import com.redditclone.dtos.LoginRequest;
 import com.redditclone.dtos.RegisterRequest;

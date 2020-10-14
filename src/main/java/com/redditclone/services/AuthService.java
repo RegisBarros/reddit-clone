@@ -15,10 +15,12 @@ import com.redditclone.repositories.UserRepository;
 import com.redditclone.repositories.VerificationTokenRepository;
 import com.redditclone.security.JwtProvider;
 
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,6 +55,38 @@ public class AuthService {
         mailService.sendMail(notificationEmail);
     }
 
+    public AuthenticationReponse login(LoginRequest loginRequest) {
+        Authentication authenticate = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
+
+        SecurityContextHolder.getContext().setAuthentication(authenticate);
+
+        String token = jwtProvider.generateToken(authenticate);
+
+        return new AuthenticationReponse(token, loginRequest.getUsername());
+    }
+
+    public void verifyAccount(String token) {
+        Optional<VerificationToken> verificationToken = verificationTokenRepository.findByToken(token);
+        verificationToken.orElseThrow(() -> new RedditException("Invalid Token"));
+
+        fetchUserAndEnable(verificationToken.get());
+    }
+
+    @Transactional(readOnly = true)
+    public User getCurrentUser() {
+        org.springframework.security.core.userdetails.User principal = (org.springframework.security.core.userdetails.User) SecurityContextHolder
+                .getContext().getAuthentication().getPrincipal();
+
+        return userRepository.findByUserName(principal.getUsername())
+                .orElseThrow(() -> new UsernameNotFoundException("User name not found - " + principal.getUsername()));
+    }
+
+    public boolean isLoggedIn() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return !(authentication instanceof AnonymousAuthenticationToken) && authentication.isAuthenticated();
+    }
+
     private String generateVerificationToken(User user) {
         String token = UUID.randomUUID().toString();
 
@@ -76,13 +110,6 @@ public class AuthService {
         return notificationEmail;
     }
 
-    public void verifyAccount(String token) {
-        Optional<VerificationToken> verificationToken = verificationTokenRepository.findByToken(token);
-        verificationToken.orElseThrow(() -> new RedditException("Invalid Token"));
-
-        fetchUserAndEnable(verificationToken.get());
-    }
-
     @Transactional
     private void fetchUserAndEnable(VerificationToken verificationToken) {
         String username = verificationToken.getUser().getUserName();
@@ -92,16 +119,5 @@ public class AuthService {
 
         user.setEnabled(true);
         userRepository.save(user);
-    }
-
-    public AuthenticationReponse login(LoginRequest loginRequest) {
-        Authentication authenticate = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
-
-        SecurityContextHolder.getContext().setAuthentication(authenticate);
-
-        String token = jwtProvider.generateToken(authenticate);
-
-        return new AuthenticationReponse(token, loginRequest.getUsername());
     }
 }
