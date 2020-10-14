@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import com.redditclone.dtos.AuthenticationReponse;
 import com.redditclone.dtos.LoginRequest;
+import com.redditclone.dtos.RefreshTokenRequest;
 import com.redditclone.dtos.RegisterRequest;
 import com.redditclone.exceptions.RedditException;
 import com.redditclone.models.NotificationEmail;
@@ -36,6 +37,7 @@ public class AuthService {
     private final MailService mailService;
     private final AuthenticationManager authenticationManager;
     private final JwtProvider jwtProvider;
+    private final RefreshTokenService refreshTokenService;
 
     @Transactional
     public void signup(RegisterRequest registerRequest) {
@@ -63,7 +65,10 @@ public class AuthService {
 
         String token = jwtProvider.generateToken(authenticate);
 
-        return new AuthenticationReponse(token, loginRequest.getUsername());
+        return AuthenticationReponse.builder().authenticationToken(token)
+                .refreshToken(refreshTokenService.generateRefreshToken().getToken())
+                .expiresAt(Instant.now().plusMillis(jwtProvider.getJwtExpirationInMillis()))
+                .username(loginRequest.getUsername()).build();
     }
 
     public void verifyAccount(String token) {
@@ -119,5 +124,16 @@ public class AuthService {
 
         user.setEnabled(true);
         userRepository.save(user);
+    }
+
+    public AuthenticationReponse refreshToken(RefreshTokenRequest refreshTokenRequest) {
+        refreshTokenService.validateRefreshToken(refreshTokenRequest.getRefreshToken());
+
+        String token = jwtProvider.generateTokenWithUserName(refreshTokenRequest.getUsername());
+
+        return AuthenticationReponse.builder().authenticationToken(token)
+                .refreshToken(refreshTokenRequest.getRefreshToken())
+                .expiresAt(Instant.now().plusMillis(jwtProvider.getJwtExpirationInMillis()))
+                .username(refreshTokenRequest.getUsername()).build();
     }
 }
