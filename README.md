@@ -18,10 +18,9 @@ This project aims to provide a hands-on learning experience with Java and the Sp
 ## Technologies
 
 * Java 11
+* Maven
 * Spring Boot 2.3.4.RELEASE
 * MySQL
-
-
 
 
 ## Setup
