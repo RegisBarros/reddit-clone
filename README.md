@@ -1,4 +1,3 @@
-# 
 # Reddit Clone API
 
 Reddit Clone API is a REST API application based on [Reddit](https://www.reddit.com/). This project is part of the course fo Full Stack Reddit Clone with Springboot & Angular, available on [Programming Techie's YouTube Channel!](https://youtu.be/7PsjGI-88sc?si=treAezucpqtxRGPl) Be sure to check it out!
